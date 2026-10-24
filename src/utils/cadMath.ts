@@ -8,7 +8,8 @@ export function distanceCm(p1: Point2D, p2: Point2D): number {
 
 export function snapToGrid(val: number, snapCm: number): number {
   if (snapCm <= 0) return Math.round(val);
-  return Math.round(val / snapCm) * snapCm;
+  const rounded = Math.round(val / snapCm) * snapCm;
+  return Number(rounded.toFixed(3));
 }
 
 export function snapPoint(p: Point2D, snapCm: number): Point2D {

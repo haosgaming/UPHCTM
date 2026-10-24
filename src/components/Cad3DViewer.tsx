@@ -1,8 +1,9 @@
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import { CadProject, Wall } from '../types/cad';
+import { CadProject } from '../types/cad';
 import { WALL_MATERIALS, LAYER_DEFINITIONS } from '../constants/materials';
 import { distanceCm } from '../utils/cadMath';
+import { Box, Maximize2, RotateCcw, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Eye } from 'lucide-react';
 
 interface Cad3DViewerProps {
   project: CadProject;
@@ -10,6 +11,9 @@ interface Cad3DViewerProps {
 
 export const Cad3DViewer: React.FC<Cad3DViewerProps> = ({ project }) => {
   const mountRef = useRef<HTMLDivElement>(null);
+  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+  const targetCenterRef = useRef<THREE.Vector3>(new THREE.Vector3(550, 80, 400));
+  const sphericalRef = useRef<THREE.Spherical>(new THREE.Spherical(1200, Math.PI / 3, Math.PI / 4));
 
   useEffect(() => {
     const container = mountRef.current;
@@ -18,14 +22,13 @@ export const Cad3DViewer: React.FC<Cad3DViewerProps> = ({ project }) => {
     const width = container.clientWidth;
     const height = container.clientHeight;
 
-    // 1. Three.js Scene, Camera, Renderer
+    // 1. Scene, Camera, Renderer
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0a0d14);
-    scene.fog = new THREE.FogExp2(0x0a0d14, 0.0008);
+    scene.background = new THREE.Color(0x080c14);
+    scene.fog = new THREE.FogExp2(0x080c14, 0.0006);
 
-    const camera = new THREE.PerspectiveCamera(45, width / height, 1, 20000);
-    // Position camera isometric looking at center of building
-    camera.position.set(600, 900, 1100);
+    const camera = new THREE.PerspectiveCamera(45, width / height, 1, 30000);
+    cameraRef.current = camera;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(width, height);
@@ -34,40 +37,40 @@ export const Cad3DViewer: React.FC<Cad3DViewerProps> = ({ project }) => {
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     container.appendChild(renderer.domElement);
 
-    // 2. Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+    // 2. Lighting Setup
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
     scene.add(ambientLight);
 
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
-    dirLight.position.set(800, 1500, 800);
-    dirLight.castShadow = true;
-    dirLight.shadow.mapSize.width = 2048;
-    dirLight.shadow.mapSize.height = 2048;
-    scene.add(dirLight);
+    const sunLight = new THREE.DirectionalLight(0xffffff, 0.85);
+    sunLight.position.set(900, 1600, 700);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.width = 2048;
+    sunLight.shadow.mapSize.height = 2048;
+    scene.add(sunLight);
 
-    const cyanPointLight = new THREE.PointLight(0x00f0ff, 0.6, 2000);
-    cyanPointLight.position.set(300, 300, 300);
-    scene.add(cyanPointLight);
+    const blueFill = new THREE.DirectionalLight(0x38bdf8, 0.35);
+    blueFill.position.set(-800, 600, -600);
+    scene.add(blueFill);
 
-    // 3. Ground Grid Helper
-    const gridHelper = new THREE.GridHelper(3000, 60, 0x00f0ff, 0x1e293b);
-    gridHelper.position.y = -1;
-    scene.add(gridHelper);
+    // 3. Grid Plane
+    const groundGrid = new THREE.GridHelper(3000, 60, 0x00f0ff, 0x1e293b);
+    groundGrid.position.y = -1;
+    scene.add(groundGrid);
 
-    // 4. Render Active Floor Walls & Elements
+    // 4. Render Active Floor
     const activeFloor = project.building.floors.find((f) => f.id === project.activeFloorId) || project.building.floors[0];
 
     if (activeFloor) {
-      // Floor Slab
+      // Floor Slab Mesh
       const floorPlaneGeo = new THREE.PlaneGeometry(1600, 1200);
       const floorMat = new THREE.MeshStandardMaterial({
-        color: 0x121722,
-        roughness: 0.8,
+        color: 0x101622,
+        roughness: 0.85,
         metalness: 0.1,
       });
       const floorMesh = new THREE.Mesh(floorPlaneGeo, floorMat);
       floorMesh.rotation.x = -Math.PI / 2;
-      floorMesh.position.set(500, 0, 400);
+      floorMesh.position.set(550, 0, 400);
       floorMesh.receiveShadow = true;
       scene.add(floorMesh);
 
@@ -78,21 +81,19 @@ export const Cad3DViewer: React.FC<Cad3DViewerProps> = ({ project }) => {
         const heightCm = wall.heightMm / 10;
         const thicknessCm = wall.thicknessMm / 10;
 
-        // Create extruded box geometry for wall
         const wallGeo = new THREE.BoxGeometry(lengthCm, heightCm, thicknessCm);
         const wallMaterial = new THREE.MeshStandardMaterial({
           color: matDef.threeColor,
           roughness: matDef.roughness,
-          metalness: 0.2,
+          metalness: 0.15,
           transparent: wall.material === 'insulating_glass',
-          opacity: wall.material === 'insulating_glass' ? 0.45 : 1.0,
+          opacity: wall.material === 'insulating_glass' ? 0.4 : 1.0,
         });
 
         const wallMesh = new THREE.Mesh(wallGeo, wallMaterial);
         wallMesh.castShadow = true;
         wallMesh.receiveShadow = true;
 
-        // Position and rotate wall
         const midX = (wall.start.x + wall.end.x) / 2;
         const midZ = (wall.start.y + wall.end.y) / 2;
         wallMesh.position.set(midX, heightCm / 2, midZ);
@@ -103,7 +104,7 @@ export const Cad3DViewer: React.FC<Cad3DViewerProps> = ({ project }) => {
         scene.add(wallMesh);
       }
 
-      // Build 3D Devices with glowing status markers
+      // Build 3D Devices with Elevation Pillars
       for (const dev of activeFloor.devices) {
         if (!project.visibleLayers[dev.layer]) continue;
         const layerDef = LAYER_DEFINITIONS.find((l) => l.id === dev.layer);
@@ -121,23 +122,15 @@ export const Cad3DViewer: React.FC<Cad3DViewerProps> = ({ project }) => {
         devMesh.position.set(dev.position.x, elevCm, dev.position.y);
         scene.add(devMesh);
 
-        // Vertical mounting guide line from floor
-        const guidePoints = [
-          new THREE.Vector3(dev.position.x, 0, dev.position.y),
-          new THREE.Vector3(dev.position.x, elevCm, dev.position.y),
-        ];
-        const lineGeo = new THREE.BufferGeometry().setFromPoints(guidePoints);
-        const lineMat = new THREE.LineDashedMaterial({
-          color: devColor,
-          dashSize: 5,
-          gapSize: 5,
-        });
-        const line = new THREE.Line(lineGeo, lineMat);
-        line.computeLineDistances();
-        scene.add(line);
+        // Mounting Pillar
+        const pillarGeo = new THREE.CylinderGeometry(1.5, 1.5, elevCm, 8);
+        const pillarMat = new THREE.MeshBasicMaterial({ color: devColor, wireframe: true });
+        const pillar = new THREE.Mesh(pillarGeo, pillarMat);
+        pillar.position.set(dev.position.x, elevCm / 2, dev.position.y);
+        scene.add(pillar);
       }
 
-      // Build 3D Technical Routes (Tubes/Pipes)
+      // Build 3D Conduit Routes
       for (const route of activeFloor.routes) {
         if (!project.visibleLayers[route.layer]) continue;
         const layerDef = LAYER_DEFINITIONS.find((l) => l.id === route.layer);
@@ -148,12 +141,12 @@ export const Cad3DViewer: React.FC<Cad3DViewerProps> = ({ project }) => {
             (p) => new THREE.Vector3(p.x, route.elevationMm / 10, p.y)
           );
           const curve = new THREE.CatmullRomCurve3(curvePoints, false, 'centripetal');
-          const tubeGeo = new THREE.TubeGeometry(curve, 40, 3, 8, false);
+          const tubeGeo = new THREE.TubeGeometry(curve, 32, 2.8, 8, false);
           const tubeMat = new THREE.MeshStandardMaterial({
             color: routeColor,
             emissive: routeColor,
-            emissiveIntensity: 0.3,
-            roughness: 0.4,
+            emissiveIntensity: 0.35,
+            roughness: 0.3,
           });
           const tubeMesh = new THREE.Mesh(tubeGeo, tubeMat);
           scene.add(tubeMesh);
@@ -161,48 +154,66 @@ export const Cad3DViewer: React.FC<Cad3DViewerProps> = ({ project }) => {
       }
     }
 
-    // 5. Interactive Orbit Navigation via pointer
-    let isDragging = false;
-    let prevMousePos = { x: 0, y: 0 };
-    let spherical = new THREE.Spherical().setFromVector3(camera.position.clone().sub(new THREE.Vector3(500, 0, 400)));
-    const targetCenter = new THREE.Vector3(500, 100, 400);
+    // 5. Dual Navigation: Left-click Orbit & Right-click/Middle-click Pan
+    let isMouseDown = false;
+    let mouseButton = 0;
+    let prevMouse = { x: 0, y: 0 };
 
-    const onPointerDown = (e: MouseEvent) => {
-      isDragging = true;
-      prevMousePos = { x: e.clientX, y: e.clientY };
+    const updateCamera = () => {
+      camera.position.setFromSpherical(sphericalRef.current).add(targetCenterRef.current);
+      camera.lookAt(targetCenterRef.current);
     };
 
-    const onPointerMove = (e: MouseEvent) => {
-      if (!isDragging) return;
-      const deltaX = e.clientX - prevMousePos.x;
-      const deltaY = e.clientY - prevMousePos.y;
+    updateCamera();
 
-      spherical.theta -= deltaX * 0.006;
-      spherical.phi = Math.max(0.1, Math.min(Math.PI / 2 - 0.05, spherical.phi - deltaY * 0.006));
-
-      camera.position.setFromSpherical(spherical).add(targetCenter);
-      camera.lookAt(targetCenter);
-
-      prevMousePos = { x: e.clientX, y: e.clientY };
+    const onMouseDown = (e: MouseEvent) => {
+      isMouseDown = true;
+      mouseButton = e.button;
+      prevMouse = { x: e.clientX, y: e.clientY };
     };
 
-    const onPointerUp = () => {
-      isDragging = false;
+    const onMouseMove = (e: MouseEvent) => {
+      if (!isMouseDown) return;
+      const dx = e.clientX - prevMouse.x;
+      const dy = e.clientY - prevMouse.y;
+
+      if (mouseButton === 0 && !e.shiftKey) {
+        // Orbit (Rotate around target)
+        sphericalRef.current.theta -= dx * 0.006;
+        sphericalRef.current.phi = Math.max(0.08, Math.min(Math.PI / 2 - 0.04, sphericalRef.current.phi - dy * 0.006));
+      } else {
+        // Pan (Translate target Center)
+        const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+        forward.y = 0;
+        forward.normalize();
+        const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+        right.y = 0;
+        right.normalize();
+
+        const panSpeed = (sphericalRef.current.radius / 800) * 1.2;
+        targetCenterRef.current.addScaledVector(right, -dx * panSpeed);
+        targetCenterRef.current.addScaledVector(forward, dy * panSpeed);
+      }
+
+      updateCamera();
+      prevMouse = { x: e.clientX, y: e.clientY };
+    };
+
+    const onMouseUp = () => {
+      isMouseDown = false;
     };
 
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
-      spherical.radius = Math.max(200, Math.min(4000, spherical.radius + e.deltaY * 0.8));
-      camera.position.setFromSpherical(spherical).add(targetCenter);
-      camera.lookAt(targetCenter);
+      sphericalRef.current.radius = Math.max(150, Math.min(5000, sphericalRef.current.radius + e.deltaY * 0.9));
+      updateCamera();
     };
 
-    container.addEventListener('mousedown', onPointerDown);
-    window.addEventListener('mousemove', onPointerMove);
-    window.addEventListener('mouseup', onPointerUp);
+    container.addEventListener('mousedown', onMouseDown);
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
     container.addEventListener('wheel', onWheel, { passive: false });
-
-    camera.lookAt(targetCenter);
+    container.addEventListener('contextmenu', (e) => e.preventDefault());
 
     // Render loop
     let animId: number;
@@ -224,9 +235,9 @@ export const Cad3DViewer: React.FC<Cad3DViewerProps> = ({ project }) => {
 
     return () => {
       cancelAnimationFrame(animId);
-      container.removeEventListener('mousedown', onPointerDown);
-      window.removeEventListener('mousemove', onPointerMove);
-      window.removeEventListener('mouseup', onPointerUp);
+      container.removeEventListener('mousedown', onMouseDown);
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
       container.removeEventListener('wheel', onWheel);
       window.removeEventListener('resize', handleResize);
       renderer.dispose();
@@ -236,18 +247,108 @@ export const Cad3DViewer: React.FC<Cad3DViewerProps> = ({ project }) => {
     };
   }, [project]);
 
+  const handleResetCamera = (view: 'isometric' | 'top' | 'front') => {
+    targetCenterRef.current.set(550, 80, 400);
+    if (view === 'isometric') {
+      sphericalRef.current.set(1300, Math.PI / 3, Math.PI / 4);
+    } else if (view === 'top') {
+      sphericalRef.current.set(1500, 0.1, 0);
+    } else if (view === 'front') {
+      sphericalRef.current.set(1400, Math.PI / 2 - 0.05, 0);
+    }
+    if (cameraRef.current) {
+      cameraRef.current.position.setFromSpherical(sphericalRef.current).add(targetCenterRef.current);
+      cameraRef.current.lookAt(targetCenterRef.current);
+    }
+  };
+
+  const handlePan3D = (dx: number, dz: number) => {
+    targetCenterRef.current.x += dx;
+    targetCenterRef.current.z += dz;
+    if (cameraRef.current) {
+      cameraRef.current.position.setFromSpherical(sphericalRef.current).add(targetCenterRef.current);
+      cameraRef.current.lookAt(targetCenterRef.current);
+    }
+  };
+
   return (
-    <div className="relative w-full h-full select-none bg-[#0a0d14]">
+    <div className="relative w-full h-full select-none bg-[#080c14] overflow-hidden">
       <div ref={mountRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
 
-      {/* 3D Viewport Controls HUD */}
-      <div className="absolute top-4 left-4 z-10 bg-[#141a26]/90 backdrop-blur-md border border-white/10 px-3 py-2 rounded-xl text-xs text-gray-300 shadow-xl">
-        <div className="font-semibold text-white flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-[#00F0FF] animate-pulse" />
-          3D Prostorový Model Budovy & Tras
+      {/* Top Left Navigation Legend */}
+      <div className="absolute top-4 left-4 z-10 bg-[#121824]/95 backdrop-blur-md border border-white/10 px-3.5 py-2.5 rounded-xl text-xs text-gray-300 shadow-xl space-y-1">
+        <div className="font-bold text-white flex items-center gap-2">
+          <Box className="w-4 h-4 text-[#00F0FF]" />
+          <span>3D Prostorový model budovy</span>
         </div>
-        <div className="text-[11px] text-gray-400 mt-1">
-          Otáčení: <span className="text-[#00F0FF]">Levé tlačítko myši</span> | Zoom: <span className="text-[#00F0FF]">Kolečko</span>
+        <div className="text-[11px] text-gray-400">
+          Otáčení: <span className="text-white">Levé tlačítko myši</span> • Posun: <span className="text-white">Pravé tlačítko / Shift</span> • Přiblížení: <span className="text-white">Kolečko</span>
+        </div>
+      </div>
+
+      {/* Camera Viewpoints & Navigation D-Pad */}
+      <div className="absolute bottom-4 right-4 z-10 flex flex-col items-end gap-2">
+        {/* View Preset Buttons */}
+        <div className="flex items-center gap-1.5 bg-[#121824]/95 backdrop-blur-md border border-white/10 p-1.5 rounded-xl text-xs shadow-xl">
+          <button
+            onClick={() => handleResetCamera('isometric')}
+            className="px-2.5 py-1 text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition-colors font-medium"
+          >
+            Nadhled 3D
+          </button>
+          <button
+            onClick={() => handleResetCamera('top')}
+            className="px-2.5 py-1 text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition-colors font-medium"
+          >
+            Půdorys zvrchu
+          </button>
+          <button
+            onClick={() => handleResetCamera('front')}
+            className="px-2.5 py-1 text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition-colors font-medium"
+          >
+            Čelní pohled
+          </button>
+        </div>
+
+        {/* Directional Camera Pan */}
+        <div className="bg-[#121824]/95 backdrop-blur-md border border-white/10 p-1.5 rounded-2xl shadow-xl flex flex-col items-center gap-0.5">
+          <button
+            onClick={() => handlePan3D(0, -100)}
+            className="p-1.5 text-gray-300 hover:text-[#00F0FF] hover:bg-white/10 rounded-lg transition-colors"
+            title="Posunout kameru vpřed"
+          >
+            <ArrowUp className="w-3.5 h-3.5" />
+          </button>
+          <div className="flex items-center gap-0.5">
+            <button
+              onClick={() => handlePan3D(-100, 0)}
+              className="p-1.5 text-gray-300 hover:text-[#00F0FF] hover:bg-white/10 rounded-lg transition-colors"
+              title="Posunout kameru doleva"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => handleResetCamera('isometric')}
+              className="p-1.5 text-[#00F0FF] hover:bg-[#00F0FF]/20 rounded-lg transition-colors"
+              title="Vycentrovat model"
+            >
+              <Maximize2 className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => handlePan3D(100, 0)}
+              className="p-1.5 text-gray-300 hover:text-[#00F0FF] hover:bg-white/10 rounded-lg transition-colors"
+              title="Posunout kameru doprava"
+            >
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <button
+            onClick={() => handlePan3D(0, 100)}
+            className="p-1.5 text-gray-300 hover:text-[#00F0FF] hover:bg-white/10 rounded-lg transition-colors"
+            title="Posunout kameru vzad"
+          >
+            <ArrowDown className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
     </div>
