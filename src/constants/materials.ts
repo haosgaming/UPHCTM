@@ -1,0 +1,123 @@
+import { WallMaterialDef, WallMaterialType } from '../types/cad';
+
+export const WALL_MATERIALS: Record<WallMaterialType, WallMaterialDef> = {
+  plasterboard: {
+    id: 'plasterboard',
+    name: 'Sádrokarton (SDK příčka)',
+    defaultThicknessMm: 100,
+    color: '#E2E8F0',
+    threeColor: 0xdde3ea,
+    roughness: 0.6,
+    attenuationDb: {
+      rf433: 1.2,
+      rf868: 1.8,
+      rf2400: 2.5,
+      rf5000: 4.2,
+    },
+  },
+  brick_interior: {
+    id: 'brick_interior',
+    name: 'Vnitřní příčková cihla (Porotherm 11.5/14)',
+    defaultThicknessMm: 140,
+    color: '#D97706',
+    threeColor: 0xca8a04,
+    roughness: 0.85,
+    attenuationDb: {
+      rf433: 3.5,
+      rf868: 5.2,
+      rf2400: 7.8,
+      rf5000: 12.4,
+    },
+  },
+  brick_exterior: {
+    id: 'brick_exterior',
+    name: 'Obvodová nosná cihla (Porotherm 38/44 Profi)',
+    defaultThicknessMm: 380,
+    color: '#B45309',
+    threeColor: 0x9a3412,
+    roughness: 0.9,
+    attenuationDb: {
+      rf433: 6.8,
+      rf868: 9.6,
+      rf2400: 14.5,
+      rf5000: 22.0,
+    },
+  },
+  reinforced_concrete: {
+    id: 'reinforced_concrete',
+    name: 'Železobeton (nosná zeď / věnec)',
+    defaultThicknessMm: 250,
+    color: '#64748B',
+    threeColor: 0x475569,
+    roughness: 0.75,
+    attenuationDb: {
+      rf433: 12.0,
+      rf868: 16.5,
+      rf2400: 24.0,
+      rf5000: 36.0,
+    },
+  },
+  insulating_glass: {
+    id: 'insulating_glass',
+    name: 'Izolační trojsklo s pokovením',
+    defaultThicknessMm: 44,
+    color: '#38BDF8',
+    threeColor: 0x38bdf8,
+    roughness: 0.1,
+    attenuationDb: {
+      rf433: 2.8,
+      rf868: 4.0,
+      rf2400: 6.5,
+      rf5000: 11.0,
+    },
+  },
+  wood_interior: {
+    id: 'wood_interior',
+    name: 'Dřevěná příčka / plné dveře',
+    defaultThicknessMm: 60,
+    color: '#A16207',
+    threeColor: 0x854d0e,
+    roughness: 0.65,
+    attenuationDb: {
+      rf433: 1.5,
+      rf868: 2.2,
+      rf2400: 3.2,
+      rf5000: 5.5,
+    },
+  },
+};
+
+export const LAYER_DEFINITIONS = [
+  {
+    id: 'rf_iot' as const,
+    name: '1. IoT & Bezdrátové sítě',
+    shortName: 'IoT / RF',
+    color: '#00F0FF',
+    icon: 'Radio',
+    description: 'WiFi 6, Zigbee ZHA (Dongle-E), ESP32-S3 Sub-GHz CC1101, BLE čidla, LoRa',
+  },
+  {
+    id: 'ethernet_data' as const,
+    name: '2. Datové rozvody & Rack',
+    shortName: 'Ethernet',
+    color: '#3B82F6',
+    icon: 'Network',
+    description: 'Cat6a UTP/STP, optické trasy, GWN7721 switch, racky, datové zásuvky RJ45',
+  },
+  {
+    id: 'electrical' as const,
+    name: '3. Elektroinstalace & FVE',
+    shortName: '230V & FVE',
+    color: '#F59E0B',
+    icon: 'Zap',
+    description: '230V rozvody, Carspa MKS1000-12 střídač, switch.ep8 relé, jističe, silové okruhy',
+  },
+  {
+    id: 'hvac_plumbing' as const,
+    name: '4. Voda, Topení & Kanalizace',
+    shortName: 'Voda & Topení',
+    color: '#10B981',
+    icon: 'Flame',
+    description: 'Otopný okruh EP8, TRV hlavice Kutloch, stoupačky, ventily, sanita',
+  },
+];

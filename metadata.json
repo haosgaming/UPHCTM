@@ -1,0 +1,6 @@
+{
+  "name": "CAD-IoT-Spatial-Planner",
+  "description": "Precizní lokální 2D/3D CAD editor budov, správa technických rozvodů a RF simulace IoT signálu.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
